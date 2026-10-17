@@ -1,19 +1,16 @@
 # ── 构建阶段 ─────────────────────────────────────────────
-# 用 glibc 的 bookworm-slim 而非 alpine：package-lock.json 生成于 glibc 环境，
-# alpine/musl 下 npm 需换装平台相关的可选依赖（@esbuild/*、esbuild-linux-* 等），
-# 会稳定触发 npm 10.8 的 "Exit handler never called!" 崩溃（退出码仍为 0，
-# 但 node_modules 不完整，后续报 "vite: not found"）。
 FROM node:20-bookworm-slim AS build
 WORKDIR /app
 
-# 升级 npm 到 10.9.x，规避 10.8.2 的 reify 崩溃 bug
-RUN npm install -g npm@10.9.4
+# 根因：npm 10.x（10.8.2/10.9.4 均复现）安装本依赖树时，在 reify 收尾阶段
+# 稳定触发 npm 自身 bug "Exit handler never called!"（amd64/arm64、glibc/musl
+# 均在 ~74s 崩溃；退出码为 0 但 node_modules 不完整 → vite: not found）。
+# 同依赖树在 npm 11.19.0 下验证可正常安装，故构建阶段固定使用 npm 11。
+RUN npm install -g npm@11.19.0
 
 COPY package.json package-lock.json ./
-# 双重保险：失败自动重试一次；装完强制校验 vite 存在，
-# 防止 npm 静默产出不完整依赖树
-RUN (npm ci --no-audit --no-fund || npm ci --no-audit --no-fund) \
-    && test -x node_modules/.bin/vite
+# 装完强制校验 vite 存在，防止依赖树静默不完整
+RUN npm ci --no-audit --no-fund && test -x node_modules/.bin/vite
 
 COPY . .
 RUN npm run build && npm prune --omit=dev
