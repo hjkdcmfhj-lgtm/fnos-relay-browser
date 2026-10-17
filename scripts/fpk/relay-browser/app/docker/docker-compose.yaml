@@ -1,0 +1,21 @@
+# 中继浏览器 — fnOS 应用容器编排
+# 镜像发布前：请将 image 前缀改为你的 GHCR/Docker Hub 命名空间
+services:
+  app:
+    image: ghcr.io/hjkdcmfhj-lgtm/fnos-relay-browser:1.0.0
+    container_name: relay-browser
+    ports:
+      - "${TRIM_SERVICE_PORT}:3000"
+    volumes:
+      - "${TRIM_PKGVAR}/data:/data"
+    environment:
+      DATA_DIR: /data
+      ADMIN_USERNAME: admin
+      # 初始管理员密码：留空则首次启动随机生成并打印到容器日志
+      ADMIN_PASSWORD: ""
+      # 通过 HTTPS（如 fnOS 远程访问）访问时建议设为 1，使会话 Cookie 带 Secure
+      FORCE_SECURE_COOKIE: "0"
+    extra_hosts:
+      # 支持在浏览器地址栏用 host.docker.internal 访问 fnOS 本机服务
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

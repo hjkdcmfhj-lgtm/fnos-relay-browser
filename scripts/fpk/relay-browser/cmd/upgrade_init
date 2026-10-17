@@ -1,0 +1,3 @@
+#!/bin/bash
+### 升级前：数据在 ${TRIM_PKGVAR}/data，镜像升级不影响，无需额外操作
+exit 0

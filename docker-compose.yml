@@ -1,0 +1,46 @@
+# 飞牛中继浏览器 — 一体化部署（应用 + MySQL 8）
+# 使用方法：在飞牛OS「Docker」应用中创建项目，选择包含本文件的目录即可。
+services:
+  app:
+    build: .
+    image: fnos-relay-browser:latest
+    container_name: fnos-relay-browser
+    ports:
+      - "3000:3000"
+    environment:
+      # 数据库连接（与下方 mysql 服务对应，生产环境请修改密码）
+      DATABASE_URL: mysql://relay:relay_password@mysql:3306/relay_browser
+      # 初始管理员用户名（默认 admin）
+      ADMIN_USERNAME: admin
+      # 初始管理员密码：留空则首次启动随机生成并打印到容器日志；
+      # 设置后不会强制改密，但仍建议登录后修改
+      # ADMIN_PASSWORD: ""
+      # 通过 HTTPS（如飞牛远程访问）访问时建议设为 1，使会话 Cookie 带 Secure
+      FORCE_SECURE_COOKIE: "0"
+    extra_hosts:
+      # 允许在浏览器地址栏用 host.docker.internal 访问飞牛本机服务
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.0
+    container_name: fnos-relay-browser-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: relay_browser
+      MYSQL_USER: relay
+      MYSQL_PASSWORD: relay_password
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  mysql-data:

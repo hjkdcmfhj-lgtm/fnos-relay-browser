@@ -1,0 +1,16 @@
+appname      = relay-browser
+version      = 1.0.0
+display_name = 中继浏览器
+desc         = 登录后通过 Web 中继访问飞牛 NAS 本地端口服务（路由器、下载器、Docker 面板等），免去为每个服务单独配置穿透与域名的麻烦。支持页面链接自动改写、WebSocket 中继、最近访问与移动端浏览。首次启动请在容器日志中查看初始管理员密码并立即修改。
+arch         = x86_64
+source       = thirdparty
+maintainer   = kimi
+distributor  = kimi
+platform     = all
+os_min_version = 0.9.27
+desktop_uidir = ui
+desktop_applaunchname = relay-browser.Application
+service_port = 3000
+checkport    = true
+ctl_stop     = true
+install_dep_apps =

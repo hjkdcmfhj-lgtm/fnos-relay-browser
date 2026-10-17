@@ -1,0 +1,4 @@
+#!/bin/bash
+### 安装前初始化：确保数据目录存在
+mkdir -p "${TRIM_PKGVAR}/data"
+exit 0

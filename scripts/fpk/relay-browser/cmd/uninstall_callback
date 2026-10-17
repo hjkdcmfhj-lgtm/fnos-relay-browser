@@ -1,0 +1,6 @@
+#!/bin/bash
+### 卸载后回调：清理数据目录（用户数据已提示备份）
+if [ -d "${TRIM_PKGVAR}/data" ]; then
+    rm -rf "${TRIM_PKGVAR}/data"
+fi
+exit 0

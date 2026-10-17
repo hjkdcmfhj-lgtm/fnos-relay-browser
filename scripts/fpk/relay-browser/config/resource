@@ -1,0 +1,22 @@
+{
+    "docker-project": {
+        "projects": [
+            {
+                "name": "relay-browser",
+                "path": "docker"
+            }
+        ]
+    },
+    "data-share": {
+        "shares": [
+            {
+                "name": "relay-browser/data",
+                "permission": {
+                    "rw": [
+                        "docker-relay-browser"
+                    ]
+                }
+            }
+        ]
+    }
+}
