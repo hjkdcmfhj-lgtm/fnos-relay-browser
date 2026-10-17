@@ -3,7 +3,8 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+# npm install 比 npm ci 在 QEMU 模拟架构下更稳（npm 在 qemu 下有 Exit handler never called 的已知 bug）
+RUN npm install --no-audit --no-fund
 
 COPY . .
 RUN npm run build && npm prune --omit=dev
