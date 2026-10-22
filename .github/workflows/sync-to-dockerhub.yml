@@ -1,0 +1,55 @@
+name: sync-to-dockerhub
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+env:
+  GHCR_IMAGE: ghcr.io/hjkdcmfhj-lgtm/fnos-relay-browser
+  # 国内可加速访问的 Docker Hub 命名空间；如绑定自己的账号请改这里
+  DH_IMAGE: docker.io/fnosrelay/fnos-relay-browser
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+      contents: read
+    steps:
+      - name: 提取版本号
+        id: ver
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "Syncing version $VER"
+
+      - name: 登录 GHCR（源）
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 登录 Docker Hub（目标）
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 拉取 GHCR 多架构镜像
+        run: |
+          docker pull --platform linux/amd64 "$GHCR_IMAGE:${{ steps.ver.outputs.version }}"
+          docker pull --platform linux/arm64 "$GHCR_IMAGE:${{ steps.ver.outputs.version }}"
+
+      - name: 推送到 Docker Hub（保留多架构）
+        run: |
+          docker buildx imagetools create \
+            -t "$DH_IMAGE:${{ steps.ver.outputs.version }}" \
+            -t "$DH_IMAGE:latest" \
+            "$GHCR_IMAGE:${{ steps.ver.outputs.version }}"
+
+      - name: 输出结果
+        run: |
+          echo "已同步到 $DH_IMAGE:${{ steps.ver.outputs.version }} (与 latest)"
