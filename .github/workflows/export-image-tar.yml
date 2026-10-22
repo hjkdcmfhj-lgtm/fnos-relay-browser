@@ -1,0 +1,64 @@
+name: export-image-tar
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "镜像版本（不带 v 前缀）"
+        required: true
+        default: "1.0.1"
+
+env:
+  IMAGE: ghcr.io/hjkdcmfhj-lgtm/fnos-relay-browser
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+      contents: write
+    steps:
+      - name: 登录 GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 拉取镜像
+        run: |
+          VER="${{ github.event.inputs.version }}"
+          docker pull --platform linux/amd64 "$IMAGE:$VER"
+          docker pull --platform linux/arm64 "$IMAGE:$VER"
+          docker images | grep relay-browser
+
+      - name: 导出为 tar 文件
+        run: |
+          VER="${{ github.event.inputs.version }}"
+          docker save "$IMAGE:$VER" -o "relay-browser-$VER.tar"
+          ls -lh "relay-browser-$VER.tar"
+          gzip "relay-browser-$VER.tar"
+          ls -lh "relay-browser-$VER.tar.gz"
+          sha256sum "relay-browser-$VER.tar.gz"
+
+      - name: 上传到 GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "v${{ github.event.inputs.version }}"
+          files: |
+            relay-browser-${{ github.event.inputs.version }}.tar.gz
+          body: |
+            ## 镜像离线包（解决 ghcr.io 国内被限速无法安装的问题）
+
+            下载后解压并在 NAS 上执行：
+
+            ```bash
+            gunzip relay-browser-${{ github.event.inputs.version }}.tar.gz
+            docker load -i relay-browser-${{ github.event.inputs.version }}.tar
+            ```
+
+            然后到应用中心重新安装，应用会发现本地已有镜像直接复用。
+
+            包含 linux/amd64 和 linux/arm64 双架构。
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
