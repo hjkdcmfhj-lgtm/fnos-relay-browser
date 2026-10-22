@@ -56,6 +56,12 @@ export NODE_ENV=production
 export DATABASE_URL="mysql://$DB_USER:$DB_PASS@127.0.0.1:$DB_PORT/$DB_NAME"
 export PORT="${PORT:-3000}"
 
+# api/lib/env.ts 强制校验 APP_ID / APP_SECRET（平台 OAuth 登录模块所需）。
+# 本应用使用自带的账号密码登录，不依赖 Kimi OAuth，故提供默认值使启动不被阻塞；
+# 如需启用平台 OAuth 登录，可在 compose 环境变量中覆盖这两个值。
+export APP_ID="${APP_ID:-relay-browser}"
+export APP_SECRET="${APP_SECRET:-relay-browser-local-secret}"
+
 # 确保数据目录可写（node 需要写 app.log；根目录挂卷时属主可能不对）
 touch "$DATA_DIR/app.log" 2>/dev/null || { echo "[entrypoint] 无法写入 $DATA_DIR/app.log"; exit 1; }
 
@@ -77,19 +83,21 @@ shutdown() {
 }
 trap shutdown TERM INT
 
-# 前台守护：任一进程退出则容器退出（docker 按 restart 策略重启）
+# 前台守护：任一进程退出则容器退出（docker 按 restart 策略重启）。
+# 以非零码退出，确保 docker / 应用中心能识别为异常退出（此前 exit 0 会被误判为正常结束）。
 while true; do
     if ! kill -0 "$APP_PID" 2>/dev/null; then
-        echo "[entrypoint] 中继服务已退出（退出码 $(wait "$APP_PID"; echo $?)），最近日志："
+        wait "$APP_PID"; app_code=$?
+        echo "[entrypoint] 中继服务已退出（退出码 $app_code），最近日志："
         tail -30 "$DATA_DIR/app.log" 2>/dev/null
         kill -TERM "$MYSQL_PID" 2>/dev/null || true
-        exit 1
+        exit ${app_code:-1}
     fi
     if ! kill -0 "$MYSQL_PID" 2>/dev/null; then
         echo "[entrypoint] MariaDB 已退出，容器结束"
         kill -TERM "$APP_PID" 2>/dev/null || true
-        wait "$MYSQL_PID" 2>/dev/null
-        exit $?
+        wait "$MYSQL_PID"; mysql_code=$?
+        exit ${mysql_code:-1}
     fi
     sleep 5
 done
